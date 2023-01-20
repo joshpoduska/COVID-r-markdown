@@ -1,1 +1,1 @@
-rmarkdown::render("code/covid_mortality_report.Rmd")
+rmarkdown::render("covid_mortality_report.Rmd")
