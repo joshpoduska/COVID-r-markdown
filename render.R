@@ -1,0 +1,1 @@
+rmarkdown::render("code/covid_mortality_report.Rmd")
