@@ -1,24 +1,40 @@
+```{r setup, echo=FALSE}
+setwd("~/Documents/Domino/COVID-r-markdown/")
+# knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library("data.table")
+library(cdcfluview)
+library(tinytex)
+# tinytex::install_tinytex()
+# tinytex::install_tinytex(force = TRUE)
+library(tibble)
+today <- as.character(today())
+today <- as_tibble(today)
+```
+
 ---
-title: "US Mortality Report"
+title: "Assessing the Impact of COVID-19 with the US Mortality Report"
 output: html_document
 ---
-
-In seeking to quantify the impact of COVID-19 in the United States, some have argued that 
-**excess mortality** is the metric upon which most Americans can agree.
-
+<br>
+Graphs last generated on `r today$value`
+<br>
+<br>
+<br>
+In seeking to quantify the impact of COVID-19 in the United States,  
+**excess mortality** is thought by many to be one of the most useful metrics.
+<br>
 Assuming that COVID-19 is the cause for nearly all the extra deaths since the Spring of 2020,
 the following graphs allow one to assess the relative impact of COVID-19 by looking at the 
 increase in deaths from all causes since the onset of the pandemic. 
 <br>
 <br>
-
+Let's first look at the current trend line and total deaths by year in a bar chart.
+<br>
+<br>
+<br>
 ```{r setup, include=FALSE}
-# knitr::opts_chunk$set(echo = TRUE)
-library(dplyr)
-library(ggplot2)
-# tinytex::install_tinytex()
-tinytex::install_tinytex(force = TRUE)
-
 # Bring in CDC US mortality data
 df <- read.csv('mortality.csv', header = TRUE, stringsAsFactors = FALSE)
 df <- df[c('total_pni','all_deaths','week_start', 'week_end')]
@@ -32,8 +48,8 @@ exc_date <- df$week_start[3]
 exc_date
 df <- subset(df, week_start < exc_date)
 
-#remove any 2014 data - using week_start
-exc_date2 <- as.Date("2015-01-01")
+#remove any 2015 data - using week_start
+exc_date2 <- as.Date("2016-01-01")
 df <- subset(df, week_start > exc_date2)
 ```
 
@@ -74,5 +90,51 @@ geom_text(aes(label=deaths_label), vjust=1.6, color="white",
 position = position_dodge(0.9), size=3.0) +
 ylab("year-to-date deaths") +
 ggtitle("Yearly US Deaths Due to Any Cause")
+print(b)
+```
+<br>
+<br>
+<br>
+The total deaths by year bar plot doesn't give us a good feel for how the current year compares to previous years unless the graph was created right at year's end. Let's add another bar chart with year to date only deaths for each year.
+<br>
+<br>
+```{r, include=FALSE}
+# plot Year to Date US deaths due to any cause - bar plot
+# get the current year and the number of weeks reported so far in that year
+cyear <- year(exc_date)
+cweek <- nrow(subset(df, format(week_end, "%Y") == cyear))
+
+# filter the first cweek weeks in each year
+df_ytd <- df %>%
+  group_by(year) %>%
+  slice_max(year, n=cweek) %>% 
+  as.data.frame()
+
+# get the first cweek rows by year
+df_ytd <- data.table(df, key = "year")
+df_ytd <- df_ytd[ , tail(.SD, cweek), by = year]
+
+# sum by year first
+df_ytd_sum <- df_ytd %>% 
+  group_by(year) %>% 
+  summarise(deaths = sum(all_deaths), n = n()) %>% 
+  as.data.frame()
+
+df_ytd_sum$deaths_label <- paste(round(df_ytd_sum$deaths / 1000000,2), "M") 
+# df_ytd_sum <- df_ytd_sum[df_ytd_sum$year,]
+df_ytd_sum
+
+# calculate y axis limits
+y_min <- round(min(df_ytd_sum$deaths)*0.75,0)
+y_max <- round(max(df_ytd_sum$deaths)*1.05,0)
+```
+
+```{r, echo=FALSE}
+b <- ggplot(df_ytd_sum, aes(x=year, y=deaths)) +
+  geom_bar(stat="identity", fill="steelblue") +
+  coord_cartesian(ylim = c(y_min, y_max)) + 
+  geom_text(aes(label=deaths_label), vjust=1.6, color="white",
+            position = position_dodge(0.9), size=3.0) +
+  ggtitle("Year to Date US Deaths Due to Any Cause")
 print(b)
 ```
